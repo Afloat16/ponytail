@@ -32,32 +32,43 @@ export type Task = {
 }
 
 // RFC 4180 rows: quoted fields may hold commas, doubled quotes and line breaks.
+// Slice complete field runs instead of concatenating every character in large ledgers.
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = []
   let row: string[] = []
   let field = ''
+  let start = 0
   let quoted = false
-  for (let i = 0; i < text.length; i++) {
+  for (let i = start; i < text.length; i++) {
     const c = text[i]
     if (quoted) {
       if (c === '"' && text[i + 1] === '"') {
-        field += '"'
+        field += text.slice(start, i) + '"'
         i++
-      } else if (c === '"') quoted = false
-      else field += c
-    } else if (c === '"') quoted = true
-    else if (c === ',') {
-      row.push(field)
+        start = i + 1
+      } else if (c === '"') {
+        field += text.slice(start, i)
+        quoted = false
+        start = i + 1
+      }
+    } else if (c === '"') {
+      field += text.slice(start, i)
+      quoted = true
+      start = i + 1
+    } else if (c === ',') {
+      row.push(field + text.slice(start, i))
       field = ''
+      start = i + 1
     } else if (c === '\n' || c === '\r') {
+      row.push(field + text.slice(start, i))
       if (c === '\r' && text[i + 1] === '\n') i++
-      row.push(field)
       if (row.some(f => f !== '')) rows.push(row)
       row = []
       field = ''
-    } else field += c
+      start = i + 1
+    }
   }
-  row.push(field)
+  row.push(field + text.slice(start))
   if (row.some(f => f !== '')) rows.push(row)
   return rows
 }
