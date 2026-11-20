@@ -223,8 +223,15 @@ const APP = `(function () {
     return f ? Math.max(7, Math.round((now - new Date(f.slice(0, 10) + 'T00:00').getTime()) / DAY) + 1) : 30
   }
   function days(n) { var out = []; for (var i = n - 1; i >= 0; i--) out.push(dayKey(now - i * DAY)); return out }
-  function inDays(list, keys) { return list.filter(function (t) { return keys.indexOf(t.started.slice(0, 10)) >= 0 }) }
-  function perDay(list, keys, pick) { return keys.map(function (k) { return total(list.filter(function (t) { return t.started.slice(0, 10) === k }), pick) }) }
+  function inDays(list, keys) { var wanted = new Set(keys); return list.filter(function (t) { return wanted.has(t.started.slice(0, 10)) }) }
+  function perDay(list, keys, pick) {
+    var sums = new Map(keys.map(function (k) { return [k, 0] }))
+    list.forEach(function (t) {
+      var k = t.started.slice(0, 10)
+      if (sums.has(k)) sums.set(k, sums.get(k) + pick(t))
+    })
+    return keys.map(function (k) { return sums.get(k) })
+  }
   function avg(values, r) { return values.map(function (_, i) { var a = values.slice(Math.max(0, i - r), i + r + 1); return a.reduce(add, 0) / a.length }) }
   // Monotone cubic through the points (as d3's curveMonotoneX): flat at peaks and valleys, never past a point.
   function smooth(p) {
